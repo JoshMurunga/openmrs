@@ -37,6 +37,20 @@ INSERT INTO openmrs.person_attribute(person_id, `value`, person_attribute_type_i
 	
 INSERT INTO openmrs.patient(patient_id, creator, date_created)
 	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person;
+	
+INSERT INTO openmrs.patient_identifier(patient_id, identifier, identifier_type, location_id, creator, date_created, uuid)
+	SELECT patient_id, IF(!ISNULL(HTSID), HTSID, ''), 4, location_id, 1, a.date_created, UUID() FROM openmrs.patient a INNER JOIN openmrs.person b ON a.patient_id=b.person_id
+	INNER JOIN iqcare.mst_patient c ON b.ptn_pk=c.ptn_pk
+	LEFT JOIN iqcare.mst_facility d ON c.LocationID=d.FacilityID
+	LEFT JOIN openmrs.location e ON d.FacilityName=e.name
+	UNION SELECT patient_id, IF(!ISNULL(PatientClinicID), PatientClinicID, ''), 7, location_id, 1, a.date_created, UUID() FROM openmrs.patient a INNER JOIN openmrs.person b ON a.patient_id=b.person_id
+	INNER JOIN iqcare.mst_patient c ON b.ptn_pk=c.ptn_pk
+	LEFT JOIN iqcare.mst_facility d ON c.LocationID=d.FacilityID
+	LEFT JOIN openmrs.location e ON d.FacilityName=e.name
+	UNION SELECT patient_id, IF(!ISNULL(HEIIDNumber), HEIIDNumber, ''), 9, location_id, 1, a.date_created, UUID() FROM openmrs.patient a INNER JOIN openmrs.person b ON a.patient_id=b.person_id
+	INNER JOIN iqcare.mst_patient c ON b.ptn_pk=c.ptn_pk
+	LEFT JOIN iqcare.mst_facility d ON c.LocationID=d.FacilityID
+	LEFT JOIN openmrs.location e ON d.FacilityName=e.name;
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
 
