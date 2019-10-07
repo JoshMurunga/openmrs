@@ -36,7 +36,7 @@ INSERT INTO openmrs.person_attribute(person_id, `value`, person_attribute_type_i
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk;
 	
 INSERT INTO openmrs.patient(patient_id, creator, date_created)
-	SELECT person_id, creator, date_created FROM openmrs.person;
+	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person;
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
 
