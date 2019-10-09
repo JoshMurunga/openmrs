@@ -3,6 +3,7 @@ SET FOREIGN_KEY_CHECKS=0;
 ALTER TABLE openmrs.person ADD COLUMN ptn_pk int (10);
 
 -- First copy patient demographic data
+-- Subject to changes to minimize data inconcistencey
 INSERT INTO openmrs.person(gender, birthdate, creator, date_created, uuid, ptn_pk)
 	SELECT IF(Sex=16, 'M', 'F'), DOB, 1, CreateDate, UUID(), ptn_pk FROM iqcare.mst_patient;
 	
@@ -59,6 +60,10 @@ INSERT INTO openmrs.patient_identifier(patient_id, identifier, identifier_type, 
 	INNER JOIN iqcare.mst_patient c ON b.ptn_pk=c.ptn_pk
 	LEFT JOIN iqcare.mst_facility d ON c.LocationID=d.FacilityID
 	LEFT JOIN openmrs.location e ON d.FacilityName=e.name;
+	
+INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name, creator, date_created, UUID)
+	SELECT person_id, `Patient First Name`, IF(`Patient Middle Name`='LName', '', `Patient Middle Name`), `Patient Last Name`, 1, a.date_created, UUID()
+	FROM openmrs.person a INNER JOIN iqcare.rpt_patientdemographics b ON a.ptn_pk=b.ptn_pk;
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
 
