@@ -26,6 +26,8 @@ INSERT INTO openmrs.person_attribute(person_id, `value`, person_attribute_type_i
 	IF(`Marital Status`='Married Monogamous', 5555, 
 	IF(`Marital Status`='MSM', 160578, '')))))))))), 5, 1, date_created, UUID()FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.rpt_maritalstatus c ON b.maritalstatus=c.id
+	UNION SELECT person_id, IF(!ISNULL(`Patient Phone Plain`), `Patient Phone Plain`, ''), 8, 1, date_created, UUID() 
+	FROM openmrs.person a INNER JOIN iqcare.rpt_patientdemographics b on a.ptn_pk=b.ptn_pk
 	UNION SELECT person_id, IF(!ISNULL(`EmergContactName`), `EmergContactName`, ''), 11, 1, date_created, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk
 	UNION SELECT person_id, IF(!ISNULL(`EmergencyContactRelation`), `EmergencyContactRelation`, ''), 12, 1, date_created, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
@@ -61,9 +63,22 @@ INSERT INTO openmrs.patient_identifier(patient_id, identifier, identifier_type, 
 	LEFT JOIN iqcare.mst_facility d ON c.LocationID=d.FacilityID
 	LEFT JOIN openmrs.location e ON d.FacilityName=e.name;
 	
-INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name, creator, date_created, UUID)
+INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name, creator, date_created, uuid)
 	SELECT person_id, `Patient First Name`, IF(`Patient Middle Name`='LName', '', `Patient Middle Name`), `Patient Last Name`, 1, a.date_created, UUID()
 	FROM openmrs.person a INNER JOIN iqcare.rpt_patientdemographics b ON a.ptn_pk=b.ptn_pk;
+	
+-- End of Patient demographic data
+
+-- Populating Patient Visit
+INSERT INTO openmrs.visit_type(`name`, creator, date_created, uuid)
+	SELECT `Visit Type`, 1, NOW(), UUID() FROM iqcare.rpt_visittype;
+	
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid)
+	SELECT person_id, IF(!ISNULL(visit_type_id), visit_type_id, 1), VisitDate, ADDTIME(VisitDate, '02:00:00'),  1, CreateDate, UUID()
+	FROM iqcare.ord_visit a 
+	INNER JOIN openmrs.person b ON a.Ptn_pk=b.ptn_pk
+	LEFT JOIN iqcare.rpt_visittype d ON a.VisitType=d.VisitTypeID 
+	LEFT JOIN openmrs.visit_type e ON d.`Visit Type`=e.`name`;
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
 
