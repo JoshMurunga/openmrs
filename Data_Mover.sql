@@ -39,7 +39,7 @@ INSERT INTO openmrs.person_attribute(person_id, `value`, person_attribute_type_i
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk;
 	
 INSERT INTO openmrs.patient(patient_id, creator, date_created)
-	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person;
+	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person WHERE ptn_pk > 0;
 	
 INSERT INTO openmrs.patient_identifier(patient_id, identifier, identifier_type, location_id, creator, date_created, uuid)
 	SELECT patient_id, IF(!ISNULL(HTSID), HTSID, ''), 4, location_id, 1, a.date_created, UUID() FROM openmrs.patient a 
@@ -69,6 +69,16 @@ INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name,
 	
 -- End of Patient demographic data
 
+-- Populating Patient Program
+INSERT INTO openmrs.patient_program(patient_id, program_id, date_enrolled, creator, date_created, uuid)
+	SELECT patient_id, 2, `Enrollment Date`, 1, CreateDate, UUID()
+	FROM openmrs.patient a
+	INNER JOIN  openmrs.person b ON a.patient_id=b.person_id
+	LEFT JOIN iqcare.rpt_patient c ON b.ptn_pk=c.ptn_pk
+	LEFT JOIN iqcare.mst_patient d ON b.ptn_pk=d.ptn_pk
+	WHERE b.ptn_pk > 0;
+-- End of Patient Program
+
 -- Populating Patient Visit
 INSERT INTO openmrs.visit_type(`name`, creator, date_created, uuid)
 	SELECT `Visit Type`, 1, NOW(), UUID() FROM iqcare.rpt_visittype;
@@ -77,8 +87,9 @@ INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped,
 	SELECT person_id, IF(!ISNULL(visit_type_id), visit_type_id, 1), VisitDate, ADDTIME(VisitDate, '02:00:00'),  1, CreateDate, UUID()
 	FROM iqcare.ord_visit a 
 	INNER JOIN openmrs.person b ON a.Ptn_pk=b.ptn_pk
-	LEFT JOIN iqcare.rpt_visittype d ON a.VisitType=d.VisitTypeID 
+	LEFT JOIN iqcare.rpt_visittype d ON a.VisitType=d.VisitTypeID
 	LEFT JOIN openmrs.visit_type e ON d.`Visit Type`=e.`name`;
+	
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
 
