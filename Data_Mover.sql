@@ -84,12 +84,21 @@ INSERT INTO openmrs.visit_type(`name`, creator, date_created, uuid)
 	SELECT `Visit Type`, 1, NOW(), UUID() FROM iqcare.rpt_visittype;
 	
 INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid)
-	SELECT person_id, IF(!ISNULL(visit_type_id), visit_type_id, 1), VisitDate, ADDTIME(VisitDate, '02:00:00'),  1, CreateDate, UUID()
-	FROM iqcare.ord_visit a 
-	INNER JOIN openmrs.person b ON a.Ptn_pk=b.ptn_pk
-	LEFT JOIN iqcare.rpt_visittype d ON a.VisitType=d.VisitTypeID
-	LEFT JOIN openmrs.visit_type e ON d.`Visit Type`=e.`name`;
+	SELECT person_id, IF(!ISNULL(visit_type_id), visit_type_id, 1), VisitDate, ADDTIME(VisitDate, '02:00:00'), 1, c.CreateDate, UUID()
+	FROM openmrs.person a 
+	INNER JOIN iqcare.dtl_patientvitals b ON a.ptn_pk=b.ptn_pk
+	INNER JOIN iqcare.ord_visit c ON b.visit_pk=c.visit_id
+	INNER JOIN iqcare.rpt_visittype d ON c.VisitType=d.VisitTypeID
+	INNER JOIN openmrs.visit_type e ON d.`Visit Type`=e.`name`;
 	
+UPDATE openmrs.visit AS a, openmrs.patient_identifier AS b 
+SET a.location_id = b.location_id
+WHERE b.patient_id = a.patient_id;
+-- End of Patient Visit	
+
+-- Tackling Obs
+
+-- End of Obs
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
 
