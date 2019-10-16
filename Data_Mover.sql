@@ -38,6 +38,12 @@ INSERT INTO openmrs.person_attribute(person_id, `value`, person_attribute_type_i
 	UNION SELECT person_id, IF(!ISNULL(`EmergContactAddress`), `EmergContactAddress`, ''), 14, 1, date_created, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk;
 	
+INSERT INTO openmrs.obs(person_id, concept_id, obs_datetime, location_id, value_coded, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 1054, b.date_created, location_id, IF(`value`='', NULL, `value`), 1, b.date_created, UUID() 
+	FROM openmrs.visit a INNER JOIN 
+	(SELECT `value`, person_id, date_created FROM openmrs.person_attribute WHERE person_attribute_type_id = 5) b 
+	ON a.patient_id=b.person_id;
+	
 INSERT INTO openmrs.patient(patient_id, creator, date_created)
 	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person WHERE ptn_pk > 0;
 	
