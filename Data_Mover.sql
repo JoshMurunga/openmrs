@@ -85,7 +85,7 @@ INSERT INTO openmrs.visit_type(`name`, creator, date_created, uuid)
 	
 INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid)
 	SELECT person_id, IF(!ISNULL(visit_type_id), visit_type_id, 1), VisitDate, ADDTIME(VisitDate, '02:00:00'), 1, c.CreateDate, UUID()
-	FROM openmrs.person a 
+	FROM openmrs.person a
 	INNER JOIN iqcare.dtl_patientvitals b ON a.ptn_pk=b.ptn_pk
 	INNER JOIN iqcare.ord_visit c ON b.visit_pk=c.visit_id
 	INNER JOIN iqcare.rpt_visittype d ON c.VisitType=d.VisitTypeID
@@ -97,7 +97,20 @@ WHERE b.patient_id = a.patient_id;
 -- End of Patient Visit	
 
 -- Tackling Obs
-
+-- #1 Patient Vitals
+INSERT INTO openmrs.encounter(encounter_type, patient_id, location_id, form_id, encounter_datetime, creator, date_created, visit_id, uuid)
+	SELECT 7, patient_id, location_id, 9, date_started, 1, date_created, visit_id, UUID() FROM openmrs.visit;
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT patient_id, 5088, encounter_id, date_created, location_id, temp, 1, date_created, UUID() 
+	FROM iqcare.ord_visit a 
+	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_id=b.visit_pk
+	INNER JOIN 
+	(SELECT DISTINCTROW ptn_pk, patient_id, b.date_created, encounter_id, encounter_datetime, location_id 
+	FROM openmrs.person a 
+	INNER JOIN openmrs.encounter b ON a.person_id=b.patient_id WHERE !ISNULL(ptn_pk) AND !ISNULL(encounter_id)) c 
+	ON a.ptn_pk=c.ptn_pk AND a.VisitDate=c.encounter_datetime
+	WHERE !ISNULL(temp);
 -- End of Obs
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
