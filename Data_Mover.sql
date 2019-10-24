@@ -39,6 +39,10 @@ INSERT INTO openmrs.person_attribute(person_id, `value`, person_attribute_type_i
 	UNION SELECT person_id, IF(!ISNULL(`EmergContactAddress`), `EmergContactAddress`, ''), 14, 1, date_created, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk;
 	
+DELETE FROM openmrs.person_attribute WHERE `value`='';
+DELETE FROM openmrs.person_attribute WHERE `value`='NULL';
+DELETE FROM openmrs.person_attribute WHERE `value`='N/A';
+	
 INSERT INTO openmrs.patient(patient_id, creator, date_created)
 	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person WHERE ptn_pk > 0;
 	
@@ -72,7 +76,7 @@ INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name,
 
 -- Populating Patient Program
 INSERT INTO openmrs.patient_program(patient_id, program_id, date_enrolled, creator, date_created, uuid)
-	SELECT patient_id, 2, `Enrollment Date`, 1, CreateDate, UUID()
+	SELECT DISTINCT patient_id, 2, `Enrollment Date`, 1, CreateDate, UUID()
 	FROM openmrs.patient a
 	INNER JOIN  openmrs.person b ON a.patient_id=b.person_id
 	LEFT JOIN iqcare.rpt_patient c ON b.ptn_pk=c.ptn_pk
@@ -111,7 +115,7 @@ UPDATE openmrs.visit AS a, openmrs.patient_identifier AS b
 SET a.location_id = b.location_id
 WHERE b.patient_id = a.patient_id;
 
-DROP TRIGGER insert_into_encounter
+DROP TRIGGER insert_into_encounter;
 -- End of Patient Visit	
 
 -- Tackling Obs
@@ -156,6 +160,15 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_pk=b.visit_pk
 	WHERE !ISNULL(Weight);
+	
+-- ***** HIV Form 20 Encounter ****
+INSERT INTO openmrs.encounter (encounter_type, patient_id, form_id, encounter_datetime, creator, date_created, uuid)
+	SELECT DISTINCT 12, patient_id, 20, IFNULL(`Enrollment Date`, NOW()), 1, CreateDate, UUID()
+	FROM openmrs.patient a
+	INNER JOIN  openmrs.person b ON a.patient_id=b.person_id
+	LEFT JOIN iqcare.rpt_patient c ON b.ptn_pk=c.ptn_pk
+	LEFT JOIN iqcare.mst_patient d ON b.ptn_pk=d.ptn_pk
+	WHERE b.ptn_pk > 0;
    
 -- #7 Patient WHO Stage
 INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, uuid)
@@ -167,15 +180,27 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	IF(c.`WHOStage`='T3', 1206, 
 	IF(c.`WHOStage`='3', 1206, 
 	IF(c.`WHOStage`='T4', 1207, 
-	IF(c.`WHOStage`='4', 1207, '')))))))) WHO, 1, date_created, UUID()
+	IF(c.`WHOStage`='4', 1207, NULL)))))))) WHO, 1, date_created, UUID()
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientstage b ON a.visit_pk=b.visit_pk
 	INNER JOIN iqcare.rpt_whostage c ON b.whostage=c.id
-	WHERE !ISNULL(c.`WHOStage`) AND c.`WHOStage`<>0 AND c.`WHOStage`<>'';
+	WHERE !ISNULL(c.`WHOStage`) AND c.`WHOStage`<>'0' AND c.`WHOStage`<>'';
 
--- #CD4 Count
+-- #8 CD4 Count
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, UUID)
+	SELECT patient_id, 5497, encounter_id, date_created, location_id, CD4here, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN
+	(SELECT DISTINCT visit_id, IFNULL(`Most Recent CD4 - IE`, `CD4`) CD4here
+	FROM iqcare.rpt_patienthivprevcareie WHERE !ISNULL(CD4))b ON a.visit_pk=b.visit_id;
 
-   
+-- #9 Last Viral Load
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, UUID)
+	SELECT patient_id, 856, encounter_id, date_created, location_id, `Most Recent Viral Load - IE`, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN
+	(SELECT DISTINCT visit_id, `Most Recent Viral Load - IE`
+	FROM iqcare.rpt_patienthivprevcareie WHERE !ISNULL(`Most Recent Viral Load - IE`))b ON a.visit_pk=b.visit_id;
 -- End of Obs
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
