@@ -111,6 +111,15 @@ INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped,
 	INNER JOIN iqcare.rpt_visittype d ON c.VisitType=d.VisitTypeID
 	INNER JOIN openmrs.visit_type e ON d.`Visit Type`=e.`name`;
 	
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid, visit_pk)
+	SELECT person_id, IF(!ISNULL(visit_type_id), visit_type_id, 1), VisitDate, ADDTIME(VisitDate, '02:00:00'), 1, c.CreateDate, UUID(), c.visit_id
+	FROM openmrs.person a
+	INNER JOIN iqcare.ord_visit c ON a.ptn_pk=c.ptn_pk
+	INNER JOIN iqcare.rpt_visittype d ON c.VisitType=d.VisitTypeID
+	INNER JOIN openmrs.visit_type e ON d.`Visit Type`=e.`name`
+	WHERE !ISNULL(VisitDate)
+	AND c.Visit_Id NOT IN (SELECT visit_pk FROM openmrs.visit f INNER JOIN iqcare.ord_visit g ON f.visit_pk=g.Visit_Id);
+	
 UPDATE openmrs.visit AS a, openmrs.patient_identifier AS b 
 SET a.location_id = b.location_id
 WHERE b.patient_id = a.patient_id;
@@ -187,20 +196,54 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	WHERE !ISNULL(c.`WHOStage`) AND c.`WHOStage`<>'0' AND c.`WHOStage`<>'';
 
 -- #8 CD4 Count
-INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, UUID)
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
 	SELECT patient_id, 5497, encounter_id, date_created, location_id, CD4here, 1, date_created, UUID()
 	FROM openmrs.encounter a
 	INNER JOIN
 	(SELECT DISTINCT visit_id, IFNULL(`Most Recent CD4 - IE`, `CD4`) CD4here
 	FROM iqcare.rpt_patienthivprevcareie WHERE !ISNULL(CD4))b ON a.visit_pk=b.visit_id;
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT patient_id, 5497, encounter_id, date_created, location_id, ResultValue, 1, date_created, UUID()
+	FROM openmrs.encounter a 
+	INNER JOIN 
+	(SELECT ResultValue, VisitId 
+	FROM iqcare.dtl_labordertestresult b 
+	INNER JOIN iqcare.dtl_labordertest c ON b.LabOrderTestId=c.Id
+	INNER JOIN iqcare.ord_laborder d ON c.LabOrderId=d.Id
+	WHERE ParameterId=1 AND !ISNULL(ResultValue)) e
+	ON a.visit_pk=e.VisitId;
+	
+--  #9 CD4 %
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT patient_id, 730, encounter_id, date_created, location_id, ResultValue, 1, date_created, UUID()
+	FROM openmrs.encounter a 
+	INNER JOIN 
+	(SELECT ResultValue, VisitId 
+	FROM iqcare.dtl_labordertestresult b 
+	INNER JOIN iqcare.dtl_labordertest c ON b.LabOrderTestId=c.Id
+	INNER JOIN iqcare.ord_laborder d ON c.LabOrderId=d.Id
+	WHERE ParameterId=2 AND !ISNULL(ResultValue)) e
+	ON a.visit_pk=e.VisitId;
 
--- #9 Last Viral Load
-INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, UUID)
+-- #10 Last Viral Load
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
 	SELECT patient_id, 856, encounter_id, date_created, location_id, `Most Recent Viral Load - IE`, 1, date_created, UUID()
 	FROM openmrs.encounter a
 	INNER JOIN
 	(SELECT DISTINCT visit_id, `Most Recent Viral Load - IE`
 	FROM iqcare.rpt_patienthivprevcareie WHERE !ISNULL(`Most Recent Viral Load - IE`))b ON a.visit_pk=b.visit_id;
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT patient_id, 856, encounter_id, date_created, location_id, ResultValue, 1, date_created, UUID()
+	FROM openmrs.encounter a 
+	INNER JOIN 
+	(SELECT ResultValue, VisitId 
+	FROM iqcare.dtl_labordertestresult b 
+	INNER JOIN iqcare.dtl_labordertest c ON b.LabOrderTestId=c.Id
+	INNER JOIN iqcare.ord_laborder d ON c.LabOrderId=d.Id
+	WHERE ParameterId=3 AND !ISNULL(ResultValue)) e
+	ON a.visit_pk=e.VisitId;
 -- End of Obs
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
