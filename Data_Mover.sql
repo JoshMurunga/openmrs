@@ -68,6 +68,10 @@ INSERT INTO openmrs.patient_identifier(patient_id, identifier, identifier_type, 
 	LEFT JOIN iqcare.mst_facility d ON c.LocationID=d.FacilityID
 	LEFT JOIN openmrs.location e ON d.FacilityName=e.name;
 	
+DELETE FROM openmrs.patient_identifier WHERE `identifier`='';
+DELETE FROM openmrs.patient_identifier WHERE `identifier`='NULL';
+DELETE FROM openmrs.patient_identifier WHERE `identifier`='N/A';	
+	
 INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name, creator, date_created, uuid)
 	SELECT person_id, `Patient First Name`, IF(`Patient Middle Name`='LName', '', `Patient Middle Name`), `Patient Last Name`, 1, a.date_created, UUID()
 	FROM openmrs.person a INNER JOIN iqcare.rpt_patientdemographics b ON a.ptn_pk=b.ptn_pk;
