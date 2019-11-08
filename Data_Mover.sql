@@ -124,6 +124,22 @@ INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped,
 	WHERE !ISNULL(VisitDate)
 	AND c.Visit_Id NOT IN (SELECT visit_pk FROM openmrs.visit f INNER JOIN iqcare.ord_visit g ON f.visit_pk=g.Visit_Id);
 	
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid, visit_pk)
+	SELECT person_id, 1, `start`, `end`, 1, d.createdate, UUID(), patientmastervisitid + 1000000
+	FROM openmrs.person a
+	INNER JOIN iqcare.patient b ON a.ptn_pk=b.ptn_pk
+	INNER JOIN iqcare.patientvitals c ON b.id=c.patientid
+	INNER JOIN iqcare.patientmastervisit d ON c.patientmastervisitid=d.id;
+	
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid, visit_pk)
+	SELECT person_id, 1, visitdate, ADDTIME(VisitDate, '03:00:00'), 1, a.createdate, UUID(), patientmastervisitid + 1000000
+	FROM iqcare.patientvitals a 
+	INNER JOIN iqcare.patient b ON a.PatientId=b.id 
+	INNER JOIN openmrs.person c ON b.ptn_pk=c.ptn_pk
+	WHERE patientmastervisitid 
+	NOT IN 
+	(SELECT id FROM iqcare.patientmastervisit);
+	
 UPDATE openmrs.visit AS a, openmrs.patient_identifier AS b 
 SET a.location_id = b.location_id
 WHERE b.patient_id = a.patient_id;
@@ -145,6 +161,21 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_pk=b.visit_pk
 	WHERE !ISNULL(temp);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5088, encounter_id, date_created, location_id, temperature, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND temperature<>0;
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5088, encounter_id, date_created, location_id, temperature, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND temperature<>0;
    
 -- #3 Patient Blood Pressure (Diastolic) 
 INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
@@ -152,13 +183,43 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_pk=b.visit_pk
 	WHERE !ISNULL(BPDiastolic);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5086, encounter_id, date_created, location_id, BPDiastolic, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND BPDiastolic<>0;
+    
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5086, encounter_id, date_created, location_id, BPDiastolic, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND BPDiastolic<>0;
    
--- #4 Patient Blood Pressur (Systolic)
+-- #4 Patient Blood Pressure (Systolic)
 INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
 	SELECT patient_id, 5085, encounter_id, date_created, location_id, BPSystolic, 1, date_created, UUID()
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_pk=b.visit_pk
 	WHERE !ISNULL(BPSystolic);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5085, encounter_id, date_created, location_id, BPSystolic, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND BPSystolic<>0;
+    
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5085, encounter_id, date_created, location_id, BPSystolic, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND BPSystolic<>0;
    
 -- #5 Patient Height
 INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
@@ -166,6 +227,21 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_pk=b.visit_pk
 	WHERE !ISNULL(Height);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5090, encounter_id, date_created, location_id, Height, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND Height<>0;
+    
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5090, encounter_id, date_created, location_id, Height, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND Height<>0;
    
 -- #6 Patient Weight
 INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
@@ -173,6 +249,21 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_pk=b.visit_pk
 	WHERE !ISNULL(Weight);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5089, encounter_id, date_created, location_id, Weight, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND Weight<>0;
+    
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5089, encounter_id, date_created, location_id, Weight, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND Weight<>0;
 	
 -- ***** HIV Form 20 Encounter ****
 INSERT INTO openmrs.encounter (encounter_type, patient_id, form_id, encounter_datetime, creator, date_created, uuid)
@@ -248,7 +339,99 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	INNER JOIN iqcare.ord_laborder d ON c.LabOrderId=d.Id
 	WHERE ParameterId=3 AND !ISNULL(ResultValue)) e
 	ON a.visit_pk=e.VisitId;
+	
+-- #11 Respiratory Rate
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT patient_id, 5242, encounter_id, date_created, location_id, RR, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_pk=b.visit_pk
+	WHERE !ISNULL(RR);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5242, encounter_id, date_created, location_id, respiratoryrate, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND respiratoryrate<>0;
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5242, encounter_id, date_created, location_id, respiratoryrate, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND respiratoryrate<>0;
+	
+-- #12 Heart Rate
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT patient_id, 5087, encounter_id, date_created, location_id, HR, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.dtl_patientvitals b ON a.visit_pk=b.visit_pk
+	WHERE !ISNULL(HR);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5087, encounter_id, date_created, location_id, HeartRate, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND HeartRate<>0;
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5087, encounter_id, date_created, location_id, HeartRate, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND HeartRate<>0;
+	
+-- #13 Muac
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 1343, encounter_id, date_created, location_id, Muac, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND Muac<>0;
+    
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 1343, encounter_id, date_created, location_id, Muac, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND Muac<>0;
+	
+-- #14 SpO2
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5092, encounter_id, date_created, location_id, SpO2, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate;
+    
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 5092, encounter_id, date_created, location_id, SpO2, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`;
+
+-- #15 BMI
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 1342, encounter_id, date_created, location_id, BMI, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	WHERE a.encounter_datetime=b.visitdate
+	AND BMI<>0;
+    
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
+	SELECT DISTINCT patient_id, 1342, encounter_id, date_created, location_id, BMI, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientvitals b ON a.visit_pk=b.patientmastervisitid + 1000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE a.encounter_datetime=c.`start`
+	AND BMI<>0;
 -- End of Obs
+
+
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
 ALTER TABLE openmrs.encounter DROP COLUMN visit_pk;
