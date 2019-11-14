@@ -140,6 +140,15 @@ INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped,
 	NOT IN 
 	(SELECT id FROM iqcare.patientmastervisit);
 	
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid, visit_pk)
+	SELECT DISTINCT person_id, 1, a.createdate, ADDTIME(a.createdate, '03:00:00'), 1, a.createdate, UUID(), patientmastervisitid + 1000000
+	FROM iqcare.patientphdp a 
+	INNER JOIN iqcare.patient b ON a.PatientId=b.id 
+	INNER JOIN openmrs.person c ON b.ptn_pk=c.ptn_pk
+	WHERE patientmastervisitid 
+	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals);
+	
 UPDATE openmrs.visit AS a, openmrs.patient_identifier AS b 
 SET a.location_id = b.location_id
 WHERE b.patient_id = a.patient_id;
@@ -429,6 +438,55 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
 	WHERE a.encounter_datetime=c.`start`
 	AND BMI<>0;
+	
+-- #16 Patient PHDP
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 
+	IF(`Phdp`=72, 165358,
+	IF(`Phdp`=73, 159777, 
+	IF(`Phdp`=74, 112603, 
+	IF(`Phdp`=75, 159423, 
+	IF(`Phdp`=76, 161557, 
+    IF(`Phdp`=77, 161558, NULL)))))), encounter_id, d.date_created, location_id, IF(`Phdp`=77, 664, 1065), 1, d.date_created, UUID()
+	FROM iqcare.patientphdp a 
+	INNER JOIN iqcare.patient b ON a.PatientId=b.id 
+	INNER JOIN openmrs.person c ON b.ptn_pk=c.ptn_pk
+	INNER JOIN openmrs.encounter d ON a.patientmastervisitid + 1000000 =d.visit_pk
+	WHERE 
+	d.encounter_datetime=a.createdate AND 
+	patientmastervisitid 
+	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals);
+
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 
+	IF(`Phdp`=72, 165358,
+	IF(`Phdp`=73, 159777, 
+	IF(`Phdp`=74, 112603, 
+	IF(`Phdp`=75, 159423, 
+	IF(`Phdp`=76, 161557, 
+    IF(`Phdp`=77, 161558, NULL)))))), encounter_id, c.date_created, location_id, IF(`Phdp`=77, 664, 1065), 1, c.date_created, UUID()
+	FROM iqcare.patientphdp a
+	INNER JOIN iqcare.patientvitals b ON a.patientmastervisitid=b.patientmastervisitid
+	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
+	WHERE b.visitdate=c.encounter_datetime;
+
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 
+	IF(`Phdp`=72, 165358,
+	IF(`Phdp`=73, 159777, 
+	IF(`Phdp`=74, 112603, 
+	IF(`Phdp`=75, 159423, 
+	IF(`Phdp`=76, 161557, 
+    IF(`Phdp`=77, 161558, NULL)))))), encounter_id, c.date_created, location_id, IF(`Phdp`=77, 664, 1065), 1, c.date_created, UUID()
+	FROM iqcare.patientphdp a
+	INNER JOIN iqcare.patientvitals b ON a.patientmastervisitid=b.patientmastervisitid
+	INNER JOIN iqcare.patientmastervisit d ON b.patientmastervisitid=d.id 
+	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
+	WHERE d.`start`=c.encounter_datetime;
+
+
+
 -- End of Obs
 
 
