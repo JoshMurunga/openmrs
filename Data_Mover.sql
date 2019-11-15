@@ -149,6 +149,33 @@ INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped,
 	NOT IN 
 	(SELECT patientmastervisitid FROM iqcare.patientvitals);
 	
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid, visit_pk)
+	SELECT DISTINCT person_id, 1, a.createdate, ADDTIME(a.createdate, '03:00:00'), 1, a.createdate, UUID(), patientmastervisitid + 1000000
+	FROM iqcare.patientchronicillness a 
+	INNER JOIN iqcare.patient b ON a.PatientId=b.id 
+	INNER JOIN openmrs.person c ON b.ptn_pk=c.ptn_pk
+	WHERE patientmastervisitid 
+	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals);
+	
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid, visit_pk)
+	SELECT DISTINCT person_id, 1, a.createdate, ADDTIME(a.createdate, '03:00:00'), 1, a.createdate, UUID(), patientmastervisitid + 1000000
+	FROM iqcare.adherenceoutcome a 
+	INNER JOIN iqcare.patient b ON a.PatientId=b.id 
+	INNER JOIN openmrs.person c ON b.ptn_pk=c.ptn_pk
+	WHERE patientmastervisitid 
+	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals);
+	
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid, visit_pk)
+	SELECT DISTINCT person_id, 1, a.createdate, ADDTIME(a.createdate, '03:00:00'), 1, a.createdate, UUID(), patientmastervisitid + 1000000
+	FROM iqcare.adherenceassessment a 
+	INNER JOIN iqcare.patient b ON a.PatientId=b.id 
+	INNER JOIN openmrs.person c ON b.ptn_pk=c.ptn_pk
+	WHERE patientmastervisitid 
+	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals);
+	
 UPDATE openmrs.visit AS a, openmrs.patient_identifier AS b 
 SET a.location_id = b.location_id
 WHERE b.patient_id = a.patient_id;
@@ -485,8 +512,115 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
 	WHERE d.`start`=c.encounter_datetime;
 
+-- #17 Patient Chronic Illness
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 1284, encounter_id, d.date_created, location_id, 
+    IF(`ChronicIllness`=125, 119481,
+    IF(`ChronicIllness`=393, 117399,
+    IF(`ChronicIllness`=379, 148432,
+    IF(`ChronicIllness`=126, 159351,
+    IF(`ChronicIllness`=397, 115115,
+    IF(`ChronicIllness`=380, 153754,
+    IF(`ChronicIllness`=395, 151342,
+	IF(`ChronicIllness`=394, 117321, 
+	IF(`ChronicIllness`=391, 139071, 
+	IF(`ChronicIllness`=399, 117703, 
+	IF(`ChronicIllness`=383, 145438, 
+    IF(`ChronicIllness`=385, 120576, NULL)))))))))))), 1, d.date_created, UUID()
+	FROM iqcare.patientchronicillness a 
+	INNER JOIN iqcare.patient b ON a.PatientId=b.id 
+	INNER JOIN openmrs.person c ON b.ptn_pk=c.ptn_pk
+	INNER JOIN openmrs.encounter d ON a.patientmastervisitid + 1000000 =d.visit_pk
+	WHERE 
+	d.encounter_datetime=a.createdate AND 
+	patientmastervisitid 
+	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 1284, encounter_id, c.date_created, location_id, 
+    IF(`ChronicIllness`=125, 119481,
+    IF(`ChronicIllness`=393, 117399,
+    IF(`ChronicIllness`=379, 148432,
+    IF(`ChronicIllness`=126, 159351,
+    IF(`ChronicIllness`=397, 115115,
+    IF(`ChronicIllness`=380, 153754,
+    IF(`ChronicIllness`=395, 151342,
+	IF(`ChronicIllness`=394, 117321, 
+	IF(`ChronicIllness`=391, 139071, 
+	IF(`ChronicIllness`=399, 117703, 
+	IF(`ChronicIllness`=383, 145438, 
+    IF(`ChronicIllness`=385, 120576, NULL)))))))))))), 1, c.date_created, UUID()
+	FROM iqcare.patientchronicillness a 
+	INNER JOIN iqcare.patientvitals b ON a.patientmastervisitid=b.patientmastervisitid
+	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
+	WHERE b.visitdate=c.encounter_datetime;
+
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 1284, encounter_id, c.date_created, location_id, 
+    IF(`ChronicIllness`=125, 119481,
+    IF(`ChronicIllness`=393, 117399,
+    IF(`ChronicIllness`=379, 148432,
+    IF(`ChronicIllness`=126, 159351,
+    IF(`ChronicIllness`=397, 115115,
+    IF(`ChronicIllness`=380, 153754,
+    IF(`ChronicIllness`=395, 151342,
+	IF(`ChronicIllness`=394, 117321, 
+	IF(`ChronicIllness`=391, 139071, 
+	IF(`ChronicIllness`=399, 117703, 
+	IF(`ChronicIllness`=383, 145438, 
+    IF(`ChronicIllness`=385, 120576, NULL)))))))))))), 1, c.date_created, UUID()
+	FROM iqcare.patientchronicillness a 
+	INNER JOIN iqcare.patientvitals b ON a.patientmastervisitid=b.patientmastervisitid
+	INNER JOIN iqcare.patientmastervisit d ON b.patientmastervisitid=d.id 
+	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
+	WHERE d.`start`=c.encounter_datetime;
+	
+-- #18 Adherence Assessment
 
 
+-- #19 Adherence Outcome
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 1658, encounter_id, d.date_created, location_id, 
+    IF(`Score`=68, 159405,
+    IF(`Score`=69, 163794,
+    IF(`Score`=70, 159406,
+    IF(`Score`=71, 159407, NULL)))), 1, d.date_created, UUID()
+	FROM iqcare.adherenceoutcome a 
+	INNER JOIN iqcare.patient b ON a.PatientId=b.id 
+	INNER JOIN openmrs.person c ON b.ptn_pk=c.ptn_pk
+	INNER JOIN openmrs.encounter d ON a.patientmastervisitid + 1000000 =d.visit_pk
+	WHERE 
+    adherencetype = 34 AND
+	d.encounter_datetime=a.createdate AND 
+	patientmastervisitid 
+	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals);
+	
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 1658, encounter_id, c.date_created, location_id, 
+    IF(`Score`=68, 159405,
+    IF(`Score`=69, 163794,
+    IF(`Score`=70, 159406,
+    IF(`Score`=71, 159407, NULL)))), 1, c.date_created, UUID()
+	FROM iqcare.adherenceoutcome a 
+	INNER JOIN iqcare.patientvitals b ON a.patientmastervisitid=b.patientmastervisitid
+	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
+	WHERE b.visitdate=c.encounter_datetime AND
+    adherencetype = 34;
+
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
+	SELECT patient_id, 1658, encounter_id, c.date_created, location_id, 
+    IF(`Score`=68, 159405,
+    IF(`Score`=69, 163794,
+    IF(`Score`=70, 159406,
+    IF(`Score`=71, 159407, NULL)))), 1, c.date_created, UUID()
+	FROM iqcare.adherenceoutcome a 
+	INNER JOIN iqcare.patientvitals b ON a.patientmastervisitid=b.patientmastervisitid
+	INNER JOIN iqcare.patientmastervisit d ON b.patientmastervisitid=d.id 
+	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
+	WHERE d.`start`=c.encounter_datetime AND
+    adherencetype = 34;
 -- End of Obs
 
 
