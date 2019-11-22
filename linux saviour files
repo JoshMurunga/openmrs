@@ -1,0 +1,33 @@
+## How to Sync Microsoft OneDrive with Linux
+https://www.maketecheasier.com/sync-onedrive-linux/
+
+## How to make a service that starts on boot in CentOS?
+https://unix.stackexchange.com/questions/368368/how-to-make-a-service-that-starts-on-boot-in-centos
+directory-- /usr/lib/systemd/system/XXXXXX.service
+
+## The XXXXXX.service file (this is an apache tomcat example)
+[Unit]
+Description=Apache Tomcat Web Application Container
+After=network.target
+
+[Service]
+Type=forking
+
+Environment=JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.241-2.6.20.0.el7_7.x86_64
+Environment=CATALINA_PID=/opt/apache-tomcat-6.0.9/temp/tomcat.pid
+Environment=CATALINA_HOME=/opt/apache-tomcat-6.0.9
+Environment=CATALINA_BASE=/opt/apache-tomcat-6.0.9
+Environment='CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC'
+Environment='JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom'
+
+ExecStart=/opt/apache-tomcat-6.0.9/bin/startup.sh
+ExecStop=/opt/apache-tomcat-6.0.9/bin/shutdown.sh
+
+User=tomcat6
+Group=tomcat6
+UMask=0007
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
