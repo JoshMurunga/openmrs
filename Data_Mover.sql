@@ -72,7 +72,7 @@ DELETE FROM openmrs.patient_identifier WHERE `identifier`='';
 DELETE FROM openmrs.patient_identifier WHERE `identifier`='NULL';
 DELETE FROM openmrs.patient_identifier WHERE `identifier`='N/A';	
 
--- There are still some missing patients' names
+-- There are still some missing patients' names to be added
 INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name, creator, date_created, uuid)
 	SELECT person_id, `Patient First Name`, IF(`Patient Middle Name`='LName', '', `Patient Middle Name`), `Patient Last Name`, 1, a.date_created, UUID()
 	FROM openmrs.person a INNER JOIN iqcare.rpt_patientdemographics b ON a.ptn_pk=b.ptn_pk;
