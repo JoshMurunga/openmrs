@@ -795,6 +795,25 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
     presentingcomplaint <>''
 	GROUP BY a.id;
 
+-- #21 Lab
+INSERT INTO openmrs.encounter (encounter_type, patient_id, encounter_datetime, creator, date_created, `uuid`, visit_pk)
+	SELECT 30, person_id, orderdate, 1, b.createdate, UUID(), visitid
+	FROM openmrs.person a
+	INNER JOIN iqcare.ord_laborder b ON a.ptn_pk=b.ptn_pk
+	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
+	INNER JOIN iqcare.dtl_labordertestresult d ON c.id=d.labordertestid
+	WHERE resultstatus = 'Received';
+
+INSERT INTO openmrs.encounter (encounter_type, patient_id, encounter_datetime, creator, date_created, `uuid`, visit_pk)
+	SELECT 30, person_id, resultdate, 1, b.createdate, UUID(), visitid + 7000000
+	FROM openmrs.person a
+	INNER JOIN iqcare.ord_laborder b ON a.ptn_pk=b.ptn_pk
+	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
+	INNER JOIN iqcare.dtl_labordertestresult d ON c.id=d.labordertestid
+	WHERE resultstatus = 'Received' AND
+	!ISNULL(resultdate);
+	
+
 -- End of Obs
 
 
