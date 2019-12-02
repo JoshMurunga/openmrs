@@ -849,10 +849,10 @@ INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, da
     IF(parameterid=117, 163126,
     IF(parameterid=123, 162202, NULL)))))))))))))))))))))))))))))))))))))), 2, encounter_id, resultdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "DISCONTINUE", 1
 	FROM openmrs.encounter a
-	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 7000000
+	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 8000000
 	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
 	INNER JOIN iqcare.dtl_labordertestresult d ON c.id=d.labordertestid
-	WHERE encounter_datetime=orderdate
+	WHERE encounter_datetime=resultdate
 	GROUP BY d.id;
 	
 
