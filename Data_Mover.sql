@@ -2,17 +2,18 @@ SET FOREIGN_KEY_CHECKS=0;
 
 ALTER TABLE openmrs.person ADD COLUMN ptn_pk int (10);
 
--- First copy patient demographic data
--- Subject to changes to minimize data inconcistencey
 -- Consider also ptn_pks that are 0
 INSERT INTO openmrs.person(gender, birthdate, creator, date_created, uuid, ptn_pk)
 	SELECT IF(Sex=16, 'M', 'F'), DOB, 1, CreateDate, UUID(), ptn_pk FROM iqcare.mst_patient;
 	
-INSERT INTO openmrs.person_address(person_id, city_village, state_province, creator, date_created, county_district, uuid)
-	SELECT person_id, c.name, d.name, 1, date_created, e.name, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b ON a.ptn_pk=b.ptn_pk
+INSERT INTO openmrs.person_address(person_id, city_village, state_province, creator, date_created, county_district, uuid, address1)
+	SELECT person_id, `c`.`name`, `d`.`name`, 1, date_created, e.name, UUID(), f.Address
+	FROM openmrs.person a 
+	INNER JOIN iqcare.mst_patient b ON a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.mst_village c ON b.villagename=c.id 
     LEFT JOIN iqcare.mst_province d ON b.province=d.id 
-    LEFT JOIN iqcare.mst_district e ON b.districtname=e.id;
+    LEFT JOIN iqcare.mst_district e ON b.districtname=e.id
+	LEFT JOIN iqcare.dec_bioinfo f on a.ptn_pk=f.ptn_pk;
 	
 INSERT INTO openmrs.person_attribute(person_id, `value`, person_attribute_type_id, creator, date_created, uuid)
 	SELECT person_id, 
@@ -25,18 +26,34 @@ INSERT INTO openmrs.person_attribute(person_id, `value`, person_attribute_type_i
 	IF(`Marital Status`='Cohabitating', 1060, 
 	IF(`Marital Status`='Married Polygamous', 159715, 
 	IF(`Marital Status`='Married Monogamous', 5555, 
-	IF(`Marital Status`='MSM', 160578, '')))))))))), 5, 1, date_created, UUID()FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
+	IF(`Marital Status`='MSM', 160578, '')))))))))), 5, 1, date_created, UUID()
+	FROM openmrs.person a 
+	INNER JOIN iqcare.mst_patient b ON a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.rpt_maritalstatus c ON b.maritalstatus=c.id
-	UNION SELECT person_id, IF(!ISNULL(`Patient Phone Plain`), `Patient Phone Plain`, ''), 8, 1, date_created, UUID() 
-	FROM openmrs.person a INNER JOIN iqcare.rpt_patientdemographics b on a.ptn_pk=b.ptn_pk
-	UNION SELECT person_id, IF(!ISNULL(`EmergContactName`), `EmergContactName`, ''), 11, 1, date_created, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
+
+	UNION SELECT person_id, IF(!ISNULL(`Phone`), `Phone`, ''), 8, 1, date_created, UUID() 
+	FROM openmrs.person a 
+	INNER JOIN iqcare.dec_bioinfo b ON a.ptn_pk=b.ptn_pk
+
+	UNION SELECT person_id, IF(!ISNULL(`EmergContactName`), `EmergContactName`, ''), 11, 1, date_created, UUID() 
+	FROM openmrs.person a 
+	INNER JOIN iqcare.mst_patient b ON a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk
-	UNION SELECT person_id, IF(!ISNULL(`EmergencyContactRelation`), `EmergencyContactRelation`, ''), 12, 1, date_created, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
+
+	UNION SELECT person_id, IF(!ISNULL(`EmergencyContactRelation`), `EmergencyContactRelation`, ''), 12, 1, date_created, UUID() 
+	FROM openmrs.person a 
+	INNER JOIN iqcare.mst_patient b ON a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk
 	LEFT JOIN iqcare.rpt_emergencycontactrelation e ON d.EmergContactRelation=e.id
-	UNION SELECT person_id, IF(!ISNULL(`EmergContactPhone`), `EmergContactPhone`, ''), 13, 1, date_created, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
+
+	UNION SELECT person_id, IF(!ISNULL(`EmergContactPhone`), `EmergContactPhone`, ''), 13, 1, date_created, UUID() 
+	FROM openmrs.person a 
+	INNER JOIN iqcare.mst_patient b ON a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk
-	UNION SELECT person_id, IF(!ISNULL(`EmergContactAddress`), `EmergContactAddress`, ''), 14, 1, date_created, UUID() FROM openmrs.person a INNER JOIN iqcare.mst_patient b on a.ptn_pk=b.ptn_pk
+
+	UNION SELECT person_id, IF(!ISNULL(`EmergContactAddress`), `EmergContactAddress`, ''), 14, 1, date_created, UUID() 
+	FROM openmrs.person a 
+	INNER JOIN iqcare.mst_patient b ON a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.dtl_patientcontacts d ON b.ptn_pk=d.ptn_pk;
 	
 DELETE FROM openmrs.person_attribute WHERE `value`='';
@@ -72,10 +89,9 @@ DELETE FROM openmrs.patient_identifier WHERE `identifier`='';
 DELETE FROM openmrs.patient_identifier WHERE `identifier`='NULL';
 DELETE FROM openmrs.patient_identifier WHERE `identifier`='N/A';	
 
--- There are still some missing patients' names to be added
 INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name, creator, date_created, uuid)
-	SELECT person_id, `Patient First Name`, IF(`Patient Middle Name`='LName', '', `Patient Middle Name`), `Patient Last Name`, 1, a.date_created, UUID()
-	FROM openmrs.person a INNER JOIN iqcare.rpt_patientdemographics b ON a.ptn_pk=b.ptn_pk;
+	SELECT person_id, `FirstName`, IF(`MiddleName`='LName', '', `MiddleName`), `LastName`, 1, a.date_created, UUID()
+	FROM openmrs.person a INNER JOIN iqcare.dec_bioinfo b ON a.ptn_pk=b.ptn_pk;
 	
 -- End of Patient demographic data
 
@@ -86,7 +102,7 @@ INSERT INTO openmrs.patient_program(patient_id, program_id, date_enrolled, creat
 	INNER JOIN  openmrs.person b ON a.patient_id=b.person_id
 	LEFT JOIN iqcare.rpt_patient c ON b.ptn_pk=c.ptn_pk
 	LEFT JOIN iqcare.mst_patient d ON b.ptn_pk=d.ptn_pk
-	WHERE b.ptn_pk > 0;
+	WHERE !ISNULL(ptn_pk);
 -- End of Patient Program
 
 -- Populating Patient Visit
@@ -795,7 +811,7 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
     presentingcomplaint <>''
 	GROUP BY a.id;
 
--- #21 Lab (still incomplete)
+-- #21 Lab
 --- lab encounter
 INSERT INTO openmrs.encounter (encounter_type, patient_id, encounter_datetime, creator, date_created, `uuid`, visit_pk)
 	SELECT 30, person_id, orderdate, 1, b.createdate, UUID(), visitid + 7000000
@@ -887,7 +903,21 @@ INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, da
 ---lab results
 INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_datetime, value_coded, creator, date_created, `uuid`);
 
+-- hypothetical test...it should work, add data to find out the truth
+-- remember this only caters for value numeric, find a way to deal with value text with numeric values
 INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_datetime, value_numeric, creator, date_created, `uuid`);
+	SELECT a.patient_id, concept_id, e.encounter_id, order_id, date_stopped, resultvalue, 1, d.createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 7000000
+	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
+	INNER JOIN iqcare.dtl_labordertestresult d ON c.id=d.labordertestid
+	INNER JOIN openmrs.orders e ON a.encounter_id=e.encounter_id 
+	WHERE parameterid IN (1,2,3,5,6,7,9,10,11,12,13,28,54,62,69,76,78,82,83,84,85,86,87,88,89,90,91)
+	AND !ISNULL(resultvalue)
+	AND ISNULL(resulttext)
+	AND encounter_datetime=orderdate
+	GROUP BY d.id
+	ORDER BY FIELD(parameterid, 1,2,3,5,6,7,9,10,11,12,13,28,54,62,69,76,78,82,83,84,85,86,87,88,89,90,91);
 
 INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_datetime, value_text, creator, date_created, `uuid`);
 
