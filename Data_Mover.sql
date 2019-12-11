@@ -7,7 +7,7 @@ INSERT INTO openmrs.person(gender, birthdate, creator, date_created, uuid, ptn_p
 	SELECT IF(Sex=16, 'M', 'F'), DOB, 1, CreateDate, UUID(), ptn_pk FROM iqcare.mst_patient;
 	
 INSERT INTO openmrs.person_address(person_id, city_village, state_province, creator, date_created, county_district, uuid, address1)
-	SELECT person_id, `c`.`name`, `d`.`name`, 1, date_created, e.name, UUID(), f.Address
+	SELECT person_id, `c`.`name`, `d`.`name`, 1, date_created, `e`.`name`, UUID(), f.Address
 	FROM openmrs.person a 
 	INNER JOIN iqcare.mst_patient b ON a.ptn_pk=b.ptn_pk
 	LEFT JOIN iqcare.mst_village c ON b.villagename=c.id 
@@ -61,7 +61,7 @@ DELETE FROM openmrs.person_attribute WHERE `value`='NULL';
 DELETE FROM openmrs.person_attribute WHERE `value`='N/A';
 	
 INSERT INTO openmrs.patient(patient_id, creator, date_created)
-	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person WHERE ptn_pk > 0;
+	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person WHERE !ISNULL(ptn_pk);
 	
 INSERT INTO openmrs.patient_identifier(patient_id, identifier, identifier_type, location_id, creator, date_created, uuid)
 	SELECT patient_id, IF(!ISNULL(HTSID), HTSID, ''), 4, location_id, 1, a.date_created, UUID() FROM openmrs.patient a 
@@ -102,7 +102,7 @@ INSERT INTO openmrs.patient_program(patient_id, program_id, date_enrolled, creat
 	INNER JOIN  openmrs.person b ON a.patient_id=b.person_id
 	LEFT JOIN iqcare.rpt_patient c ON b.ptn_pk=c.ptn_pk
 	LEFT JOIN iqcare.mst_patient d ON b.ptn_pk=d.ptn_pk
-	WHERE !ISNULL(ptn_pk);
+	WHERE !ISNULL(b.ptn_pk);
 -- End of Patient Program
 
 -- Populating Patient Visit
@@ -140,7 +140,7 @@ INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped,
 	WHERE !ISNULL(VisitDate)
 	AND c.Visit_Id NOT IN (SELECT visit_pk FROM openmrs.visit f INNER JOIN iqcare.ord_visit g ON f.visit_pk=g.Visit_Id)
 	
-	UNION SELECT person_id, 1, `start`, `end`, 1, d.createdate, UUID(), patientmastervisitid + 1000000
+	UNION SELECT person_id, 1, `start`, IF(!ISNULL(`end`), `end`, ADDTIME(`start`, '02:00:00')), 1, d.createdate, UUID(), patientmastervisitid + 1000000
 	FROM openmrs.person a
 	INNER JOIN iqcare.patient b ON a.ptn_pk=b.ptn_pk
 	INNER JOIN iqcare.patientvitals c ON b.id=c.patientid
@@ -334,7 +334,7 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientstage b ON a.visit_pk=b.visit_pk
 	INNER JOIN iqcare.rpt_whostage c ON b.whostage=c.id
-	WHERE !ISNULL(c.`WHOStage`) AND c.`WHOStage`<>'0' AND c.`WHOStage`<>'';
+	WHERE !ISNULL(`c`.`WHOStage`) AND `c`.`WHOStage`<>'0' AND `c`.`WHOStage`<>'';
 
 -- #8 CD4 Count
 INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
@@ -578,7 +578,7 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	GROUP BY a.id;
 	
 -- #18 Adherence Assessment
-INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID);
+INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, UUID)
 	SELECT patient_id, 165359, encounter_id, d.date_created, location_id, 
     IF(`ForgetMedicine`=0, 1066,
     IF(`ForgetMedicine`=1, 1065, NULL)), 1, d.date_created, UUID()
@@ -856,9 +856,11 @@ INSERT INTO openmrs.encounter (encounter_type, patient_id, encounter_datetime, c
 	AND ISNULL(resultvalue);
 	
 --- lab orders
+ALTER TABLE openmrs.orders ADD COLUMN labresult_pk int (10);
+
 SET @ord:= IF(ISNULL((SELECT MAX(order_id) FROM openmrs.orders)), 0, (SELECT MAX(order_id) FROM openmrs.orders));
 
-INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, date_activated, date_stopped, creator, date_created, patient_id, `uuid`, order_number, order_action, care_setting)
+INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, date_activated, date_stopped, creator, date_created, patient_id, `uuid`, order_number, order_action, care_setting, labresult_pk)
 	SELECT 3, 
 	IF(parameterid=1, 5497, IF(parameterid=2, 730, IF(parameterid=3, 856, IF(parameterid=5, 1015, IF(parameterid=6, 1015,
 	IF(parameterid=7, 678, IF(parameterid=9, 729, IF(parameterid=10, 653, IF(parameterid=11, 654, IF(parameterid=12, 790,
@@ -872,7 +874,7 @@ INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, da
 	IF(parameterid=86, 1023, IF(parameterid=87, 1339, IF(parameterid=88, 1024, IF(parameterid=89, 1340, IF(parameterid=22, 161156,
 	IF(parameterid=65, 165365, IF(parameterid=66, 165366, IF(parameterid=67, 165367, IF(parameterid=71, 165368, IF(parameterid=72, 165369,
 	IF(parameterid=79, 164977, IF(parameterid=117, 163126, NULL))))))))))))))))))))))))))))))))))))))))))))))))))))))))),
-	2, encounter_id, orderdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "NEW", 1
+	2, encounter_id, orderdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "NEW", 1, d.id
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 7000000
 	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
@@ -897,7 +899,7 @@ INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, da
 	IF(parameterid=86, 1023, IF(parameterid=87, 1339, IF(parameterid=88, 1024, IF(parameterid=89, 1340, IF(parameterid=22, 161156,
 	IF(parameterid=65, 165365, IF(parameterid=66, 165366, IF(parameterid=67, 165367, IF(parameterid=71, 165368, IF(parameterid=72, 165369,
 	IF(parameterid=79, 164977, IF(parameterid=117, 163126, NULL))))))))))))))))))))))))))))))))))))))))))))))))))))))))),
-	2, encounter_id, orderdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "NEW", 1
+	2, encounter_id, orderdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "NEW", 1, d.id
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 7000000
 	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
@@ -909,7 +911,7 @@ INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, da
 	AND ISNULL(resultvalue)
 	GROUP BY d.id;
 	
-INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, date_activated, auto_expire_date, creator, date_created, patient_id, `uuid`, order_number, order_action, care_setting)
+INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, date_activated, auto_expire_date, creator, date_created, patient_id, `uuid`, order_number, order_action, care_setting, labresult_pk)
 	SELECT 3, 
 	IF(parameterid=1, 5497, IF(parameterid=2, 730, IF(parameterid=3, 856, IF(parameterid=5, 1015, IF(parameterid=6, 1015,
 	IF(parameterid=7, 678, IF(parameterid=9, 729, IF(parameterid=10, 653, IF(parameterid=11, 654, IF(parameterid=12, 790,
@@ -923,7 +925,7 @@ INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, da
 	IF(parameterid=86, 1023, IF(parameterid=87, 1339, IF(parameterid=88, 1024, IF(parameterid=89, 1340, IF(parameterid=22, 161156,
 	IF(parameterid=65, 165365, IF(parameterid=66, 165366, IF(parameterid=67, 165367, IF(parameterid=71, 165368, IF(parameterid=72, 165369,
 	IF(parameterid=79, 164977, IF(parameterid=117, 163126, NULL))))))))))))))))))))))))))))))))))))))))))))))))))))))))),
-	2, encounter_id, resultdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "DISCONTINUE", 1
+	2, encounter_id, resultdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "DISCONTINUE", 1, d.id
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 8000000
 	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
@@ -948,7 +950,7 @@ INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, da
 	IF(parameterid=86, 1023, IF(parameterid=87, 1339, IF(parameterid=88, 1024, IF(parameterid=89, 1340, IF(parameterid=22, 161156,
 	IF(parameterid=65, 165365, IF(parameterid=66, 165366, IF(parameterid=67, 165367, IF(parameterid=71, 165368, IF(parameterid=72, 165369,
 	IF(parameterid=79, 164977, IF(parameterid=117, 163126, NULL))))))))))))))))))))))))))))))))))))))))))))))))))))))))),
-	2, encounter_id, resultdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "DISCONTINUE", 1
+	2, encounter_id, resultdate, resultdate, 1, d.createdate, patient_id, UUID(), CONCAT("ORD-", (SELECT IF(ISNULL(@ord), 0, @ord:=@ord+1))), "DISCONTINUE", 1, d.id
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 8000000
 	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
@@ -962,6 +964,48 @@ INSERT INTO openmrs.orders (order_type_id, concept_id, orderer, encounter_id, da
 	
 ---lab results
 INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_datetime, value_coded, creator, date_created, `uuid`)
+	SELECT a.patient_id, concept_id, e.encounter_id, order_id, date_stopped,
+	IF(resultvalue=1, 703, IF(resultvalue=0, 664, IF(resultvalue=3, 1138, NULL))), 1, d.createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 7000000
+	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
+	INNER JOIN iqcare.dtl_labordertestresult d ON c.id=d.labordertestid
+	INNER JOIN openmrs.orders e ON a.encounter_id=e.encounter_id 
+	WHERE parameterid IN (4,14,15,17,116,53,101,74,75,92,93,94,95,96,114,65,66,67,68,71,72,79,108,117)
+	AND !ISNULL(resultvalue)
+	AND ISNULL(resulttext)
+	AND encounter_datetime=orderdate
+	AND labresult_pk=d.id
+	GROUP BY d.id
+	ORDER BY FIELD(parameterid, 4,14,15,17,116,53,101,74,75,92,93,94,95,96,114,65,66,67,68,71,72,79,108,117);
+	
+INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_datetime, value_coded, creator, date_created, `uuid`)
+	SELECT a.patient_id, concept_id, e.encounter_id, order_id, date_stopped,
+	IF(resulttext='POSITIVE', 703,
+	IF(resulttext='pos', 703,
+	IF(resulttext='neg', 664,
+	IF(resulttext='No MPS Seen', 664,
+	IF(resulttext='Neagative', 664,
+	IF(resulttext='Ne', 664,
+	IF(resulttext='N', 664,
+	IF(resulttext='Non-Reactive', 1229,
+	IF(resulttext='A+', 163115,
+	IF(resulttext='O+', 163118,
+	IF(resulttext='NEGATIVE', 664, NULL))))))))))),
+	1, d.createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 7000000
+	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
+	INNER JOIN iqcare.dtl_labordertestresult d ON c.id=d.labordertestid
+	INNER JOIN openmrs.orders e ON a.encounter_id=e.encounter_id 
+	WHERE parameterid IN (14,15,116,101,75,114,65,66,67,68,71,72,79,108,117)
+	AND ISNULL(resultvalue)
+	AND !ISNULL(resulttext)
+	AND encounter_datetime=orderdate
+	AND labresult_pk=d.id
+	AND resulttext<>'select'
+	GROUP BY d.id
+	ORDER BY FIELD(parameterid, 14,15,116,101,75,114,65,66,67,68,71,72,79,108,117);
 
 INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_datetime, value_numeric, creator, date_created, `uuid`)
 	SELECT a.patient_id, concept_id, e.encounter_id, order_id, date_stopped, resultvalue, 1, d.createdate, UUID()
@@ -974,6 +1018,7 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_date
 	AND !ISNULL(resultvalue)
 	AND ISNULL(resulttext)
 	AND encounter_datetime=orderdate
+	AND labresult_pk=d.id
 	GROUP BY d.id
 	ORDER BY FIELD(parameterid, 1,2,3,5,6,7,9,10,11,12,13,28,54,62,69,76,78,82,83,84,85,86,87,88,89,90,91);
 	
@@ -988,6 +1033,7 @@ INSERT IGNORE INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, o
 	AND ISNULL(resultvalue)
 	AND !ISNULL(resulttext)
 	AND encounter_datetime=orderdate
+	AND labresult_pk=d.id
 	GROUP BY d.id
 	ORDER BY FIELD(parameterid, 62,69,76,78);
 
@@ -998,12 +1044,28 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_date
 	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
 	INNER JOIN iqcare.dtl_labordertestresult d ON c.id=d.labordertestid
 	INNER JOIN openmrs.orders e ON a.encounter_id=e.encounter_id 
-	WHERE parameterid IN (55,105,20,22)
+	WHERE parameterid IN (55,105,20,22,16,23)
 	AND ISNULL(resultvalue)
 	AND !ISNULL(resulttext)
 	AND encounter_datetime=orderdate
+	AND labresult_pk=d.id
 	GROUP BY d.id
-	ORDER BY FIELD(parameterid, 55,105,20,22);
+	ORDER BY FIELD(parameterid, 55,105,20,22,16,23);
+	
+INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_datetime, value_text, creator, date_created, `uuid`)
+	SELECT a.patient_id, concept_id, e.encounter_id, order_id, date_stopped, IF(resultvalue=0, "Negative", IF(resultvalue=1, "Positive", NULL)), 1, d.createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.ord_laborder b ON a.visit_pk=b.visitid + 7000000
+	INNER JOIN iqcare.dtl_labordertest c ON b.id=c.laborderid
+	INNER JOIN iqcare.dtl_labordertestresult d ON c.id=d.labordertestid
+	INNER JOIN openmrs.orders e ON a.encounter_id=e.encounter_id 
+	WHERE parameterid IN (16,23)
+	AND ISNULL(resulttext)
+	AND !ISNULL(resultvalue)
+	AND encounter_datetime=orderdate
+	AND labresult_pk=d.id
+	GROUP BY d.id
+	ORDER BY FIELD(parameterid, 16,23);
 
 -- End of Obs
 
@@ -1012,5 +1074,6 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_date
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;
 ALTER TABLE openmrs.encounter DROP COLUMN visit_pk;
 ALTER TABLE openmrs.visit DROP COLUMN visit_pk;
+ALTER TABLE openmrs.orders DROP COLUMN labresult_pk;
 
 SET FOREIGN_KEY_CHECKS=1;
