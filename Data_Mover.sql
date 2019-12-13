@@ -97,12 +97,28 @@ INSERT INTO openmrs.person_name(person_id, given_name, middle_name, family_name,
 
 -- Populating Patient Program
 INSERT INTO openmrs.patient_program(patient_id, program_id, date_enrolled, creator, date_created, uuid)
-	SELECT DISTINCT patient_id, 2, `Enrollment Date`, 1, CreateDate, UUID()
+	SELECT person_id, 2, enrollmentdate, 1, c.createdate, UUID()
+	FROM openmrs.person a
+	INNER JOIN iqcare.patient b ON a.ptn_pk=b.ptn_pk
+	INNER JOIN iqcare.patientenrollment c ON b.id=c.patientid;
+    
+INSERT INTO openmrs.patient_program(patient_id, program_id, date_enrolled, creator, date_created, uuid)
+    SELECT DISTINCT patient_id, 2, `Enrollment Date`, 1, CreateDate, UUID()
 	FROM openmrs.patient a
 	INNER JOIN  openmrs.person b ON a.patient_id=b.person_id
 	LEFT JOIN iqcare.rpt_patient c ON b.ptn_pk=c.ptn_pk
 	LEFT JOIN iqcare.mst_patient d ON b.ptn_pk=d.ptn_pk
-	WHERE !ISNULL(b.ptn_pk);
+	WHERE !ISNULL(`Enrollment Date`)
+	AND patient_id NOT IN
+	(SELECT patient_id FROM openmrs.patient_program);
+	
+INSERT INTO openmrs.patient_program(patient_id, program_id, date_enrolled, creator, date_created, uuid)
+	SELECT person_id, 2, startdate, 1, createdate, UUID()
+	FROM openmrs.person a
+	INNER JOIN iqcare.lnk_patientprogramstart b ON a.ptn_pk=b.ptn_pk
+	WHERE moduleid=2 
+	AND b.ptn_pk NOT IN
+	(SELECT ptn_pk FROM openmrs.person a INNER JOIN openmrs.patient_program b ON a.person_id=b.patient_id);
 -- End of Patient Program
 
 -- Populating Patient Visit
@@ -130,9 +146,10 @@ INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped,
 	INNER JOIN iqcare.dtl_patientvitals b ON a.ptn_pk=b.ptn_pk
 	INNER JOIN iqcare.ord_visit c ON b.visit_pk=c.visit_id
 	INNER JOIN iqcare.rpt_visittype d ON c.VisitType=d.VisitTypeID
-	INNER JOIN openmrs.visit_type e ON d.`Visit Type`=e.`name`
-	
-	UNION SELECT person_id, IF(!ISNULL(visit_type_id), visit_type_id, 1), VisitDate, ADDTIME(VisitDate, '02:00:00'), 1, c.CreateDate, UUID(), c.visit_id
+	INNER JOIN openmrs.visit_type e ON d.`Visit Type`=e.`name`;
+
+INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped, creator, date_created, uuid, visit_pk)	
+	SELECT person_id, IF(!ISNULL(visit_type_id), visit_type_id, 1), VisitDate, ADDTIME(VisitDate, '02:00:00'), 1, c.CreateDate, UUID(), c.visit_id
 	FROM openmrs.person a
 	INNER JOIN iqcare.ord_visit c ON a.ptn_pk=c.ptn_pk
 	INNER JOIN iqcare.rpt_visittype d ON c.VisitType=d.VisitTypeID
