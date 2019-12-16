@@ -64,7 +64,8 @@ INSERT INTO openmrs.patient(patient_id, creator, date_created)
 	SELECT person_id, IF(!ISNULL(creator), creator, 0), date_created FROM openmrs.person WHERE !ISNULL(ptn_pk);
 	
 INSERT INTO openmrs.patient_identifier(patient_id, identifier, identifier_type, location_id, creator, date_created, uuid)
-	SELECT patient_id, IF(!ISNULL(HTSID), HTSID, ''), 4, location_id, 1, a.date_created, UUID() FROM openmrs.patient a 
+	SELECT patient_id, IF(!ISNULL(HTSID), HTSID, ''), 4, location_id, 1, a.date_created, UUID()
+	FROM openmrs.patient a 
     INNER JOIN openmrs.person b ON a.patient_id=b.person_id
 	INNER JOIN iqcare.mst_patient c ON b.ptn_pk=c.ptn_pk
 	LEFT JOIN iqcare.mst_facility d ON c.LocationID=d.FacilityID
@@ -80,7 +81,8 @@ INSERT INTO openmrs.patient_identifier(patient_id, identifier, identifier_type, 
 	LEFT JOIN openmrs.location g ON f.FacilityName=g.name
     
 	UNION SELECT patient_id, IF(!ISNULL(HEIIDNumber), HEIIDNumber, ''), 13, location_id, 1, a.date_created, UUID() 
-    FROM openmrs.patient a INNER JOIN openmrs.person b ON a.patient_id=b.person_id
+    FROM openmrs.patient a
+	INNER JOIN openmrs.person b ON a.patient_id=b.person_id
 	INNER JOIN iqcare.mst_patient c ON b.ptn_pk=c.ptn_pk
 	LEFT JOIN iqcare.mst_facility d ON c.LocationID=d.FacilityID
 	LEFT JOIN openmrs.location e ON d.FacilityName=e.name;
@@ -211,6 +213,15 @@ INSERT INTO openmrs.visit(patient_id, visit_type_id, date_started, date_stopped,
 	WHERE presentingcomplaint <>'' AND
 	patientmastervisitid 
 	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals)
+	
+	UNION SELECT person_id, 1, `start`, IF(!ISNULL(`end`), `end`, ADDTIME(`start`, '02:00:00')), 1, b.createdate, UUID(), a.patientmastervisitid + 9000000
+	FROM iqcare.patientwhostage a
+	INNER JOIN iqcare.patientmastervisit b ON a.patientmastervisitid=b.id
+	INNER JOIN iqcare.patient c ON b.patientid=c.id
+	INNER JOIN openmrs.person d ON c.ptn_pk=d.ptn_pk
+	WHERE a.patientmastervisitid
+	NOT IN
 	(SELECT patientmastervisitid FROM iqcare.patientvitals);
 	
 UPDATE openmrs.visit AS a, openmrs.patient_identifier AS b 
@@ -340,18 +351,57 @@ INSERT INTO openmrs.encounter (encounter_type, patient_id, form_id, encounter_da
 -- #7 Patient WHO Stage
 INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator, date_created, uuid)
 	SELECT patient_id, 5356, encounter_id, date_created, location_id, 
-	IF(c.`WHOStage`='T1', 1204, 
-	IF(c.`WHOStage`='1', 1204, 
-	IF(c.`WHOStage`='T2', 1205, 
-	IF(c.`WHOStage`='2', 1205, 
-	IF(c.`WHOStage`='T3', 1206, 
-	IF(c.`WHOStage`='3', 1206, 
-	IF(c.`WHOStage`='T4', 1207, 
-	IF(c.`WHOStage`='4', 1207, NULL)))))))) WHO, 1, date_created, UUID()
+	IF(c.`WHOStage`='T1', 1204,
+	IF(c.`WHOStage`='1', 1204,
+	IF(c.`WHOStage`='T2', 1205,
+	IF(c.`WHOStage`='2', 1205,
+	IF(c.`WHOStage`='T3', 1206,
+	IF(c.`WHOStage`='3', 1206,
+	IF(c.`WHOStage`='T4', 1207,
+	IF(c.`WHOStage`='4', 1207, NULL)))))))), 1, date_created, UUID()
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.dtl_patientstage b ON a.visit_pk=b.visit_pk
 	INNER JOIN iqcare.rpt_whostage c ON b.whostage=c.id
-	WHERE !ISNULL(`c`.`WHOStage`) AND `c`.`WHOStage`<>'0' AND `c`.`WHOStage`<>'';
+	WHERE !ISNULL(`c`.`WHOStage`) AND `c`.`WHOStage`<>'0' AND `c`.`WHOStage`<>''
+	
+	UNION SELECT patient_id, 5356, encounter_id, e.date_created, location_id,
+	IF(`WHOStage`=132, 1204,
+	IF(`WHOStage`=133, 1205,
+	IF(`WHOStage`=134, 1206,
+	IF(`WHOStage`=135, 1207, NULL)))), 1, e.date_created, UUID()
+	FROM iqcare.patientwhostage a
+	INNER JOIN iqcare.patientmastervisit b ON a.patientmastervisitid=b.id
+	INNER JOIN iqcare.patient c ON b.patientid=c.id
+	INNER JOIN openmrs.person d ON c.ptn_pk=d.ptn_pk
+	INNER JOIN openmrs.encounter e ON a.patientmastervisitid + 9000000 =e.visit_pk
+	WHERE 
+	e.encounter_datetime=b.createdate AND 
+	patientmastervisitid 
+	NOT IN 
+	(SELECT patientmastervisitid FROM iqcare.patientvitals)
+	
+	UNION SELECT patient_id, 5356, encounter_id, c.date_created, location_id,
+	IF(`WHOStage`=132, 1204,
+	IF(`WHOStage`=133, 1205,
+	IF(`WHOStage`=134, 1206,
+	IF(`WHOStage`=135, 1207, NULL)))), 1, c.date_created, UUID()
+	FROM iqcare.patientwhostage a
+	INNER JOIN iqcare.patientvitals b ON a.patientmastervisitid=b.patientmastervisitid
+	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
+	WHERE b.visitdate=c.encounter_datetime
+	GROUP BY a.id
+
+	UNION SELECT patient_id, 5356, encounter_id, c.date_created, location_id,
+	IF(`WHOStage`=132, 1204,
+	IF(`WHOStage`=133, 1205,
+	IF(`WHOStage`=134, 1206,
+	IF(`WHOStage`=135, 1207, NULL)))), 1, c.date_created, UUID()
+	FROM iqcare.patientwhostage a
+	INNER JOIN iqcare.patientvitals b ON a.patientmastervisitid=b.patientmastervisitid
+	INNER JOIN iqcare.patientmastervisit d ON b.patientmastervisitid=d.id 
+	INNER JOIN openmrs.encounter c ON b.patientmastervisitid + 1000000=c.visit_pk
+	WHERE d.`start`=c.encounter_datetime
+	GROUP BY a.id;
 
 -- #8 CD4 Count
 INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, location_id, value_numeric, creator, date_created, uuid)
@@ -490,7 +540,7 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	IF(`Phdp`=72, 165358,
 	IF(`Phdp`=73, 159777, 
 	IF(`Phdp`=74, 112603, 
-	IF(`Phdp`=75, 159423, 
+	IF(`Phdp`=75, 159423,
 	IF(`Phdp`=76, 161557, 
     IF(`Phdp`=77, 161558, NULL)))))), encounter_id, d.date_created, location_id, IF(`Phdp`=77, 664, 1065), 1, d.date_created, UUID()
 	FROM iqcare.patientphdp a 
@@ -1083,6 +1133,8 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, order_id, obs_date
 	AND labresult_pk=d.id
 	GROUP BY d.id
 	ORDER BY FIELD(parameterid, 16,23);
+	
+-- #22 Patient Care Ending
 
 -- End of Obs
 
