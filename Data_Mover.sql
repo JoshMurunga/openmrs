@@ -1213,6 +1213,56 @@ INSERT INTO openmrs.obs(person_id, concept_id, encounter_id, obs_datetime, locat
 	WHERE d.`start`=c.encounter_datetime 
 	AND clinicalnotes <>''
 	GROUP BY a.id;
+	
+-- #24 Patient Family Planning
+INSERT INTO openmrs.encounter (encounter_type, patient_id, location_id, form_id, encounter_datetime, creator, date_created, `uuid`, visit_pk)
+	SELECT 4, person_id, 2631, 3, visitdate, 1, c.createdate, UUID(), patientmastervisitid + 12000000
+	FROM openmrs.person a
+	INNER JOIN iqcare.patient b ON a.ptn_pk=b.ptn_pk
+	INNER JOIN iqcare.patientfamilyplanning c ON b.id=c.patientid
+    WHERE familyplanningstatusid<>0;
+	
+INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator,  date_created, `uuid`)
+	SELECT patient_id, 160653, encounter_id, encounter_datetime, location_id,
+	IF(`FamilyPlanningStatusId`=1, 965,
+	IF(`FamilyPlanningStatusId`=2, 160652,
+	IF(`FamilyPlanningStatusId`=3, 1360, NULL))), 1, createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientfamilyplanning b ON a.visit_pk=b.patientmastervisitid + 12000000
+	WHERE visitdate=encounter_datetime
+	AND familyplanningstatusid<>0
+	GROUP BY b.id
+	
+	UNION SELECT patient_id, 160575, encounter_id, encounter_datetime, location_id,
+	IF(`ReasonNotOnFPId`=113, 160571,
+	IF(`ReasonNotOnFPId`=114, 160572,
+	IF(`ReasonNotOnFPId`=115, 160573,
+	IF(`ReasonNotOnFPId`=116, 1434, NULL)))), 1, createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientfamilyplanning b ON a.visit_pk=b.patientmastervisitid + 12000000
+	WHERE visitdate=encounter_datetime
+	AND familyplanningstatusid=2
+	AND reasonnotonfpid<>0
+	GROUP BY b.id
+	
+	UNION SELECT patient_id, 374, encounter_id, encounter_datetime, location_id,
+	IF(`FPMethodId`=4, 190,
+	IF(`FPMethodId`=5, 160570,
+	IF(`FPMethodId`=6, 780,
+	IF(`FPMethodId`=7, 5279,
+	IF(`FPMethodId`=8, 1359,
+	IF(`FPMethodId`=9, 5275,
+	IF(`FPMethodId`=10, 136163,
+	IF(`FPMethodId`=11, 5278,
+	IF(`FPMethodId`=12, 5277,
+	IF(`FPMethodId`=13, 1472,
+	IF(`FPMethodId`=14, 1489,
+	IF(`FPMethodId`=15, 162332, NULL))))))))))))yea, 1, c.createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patientfamilyplanning b ON a.visit_pk=b.patientmastervisitid + 12000000
+	INNER JOIN iqcare.patientfamilyplanningmethod c ON b.id=c.patientfpid
+	WHERE visitdate=encounter_datetime
+	GROUP BY c.id;
 
 -- End of Obs
 
