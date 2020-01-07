@@ -1264,6 +1264,85 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, loca
 	WHERE visitdate=encounter_datetime
 	GROUP BY c.id;
 
+-- #25 Patient ICF
+INSERT INTO openmrs.encounter (encounter_type, patient_id, location_id, form_id, encounter_datetime, creator, date_created, `uuid`, visit_pk)
+	SELECT 13, person_id, 2631, 27, visitdate, 1, d.createdate, UUID(), patientmastervisitid + 13000000
+	FROM openmrs.person a
+	INNER JOIN iqcare.patient b ON a.ptn_pk=b.ptn_pk
+	INNER JOIN iqcare.patientmastervisit c ON b.id=c.patientid
+	INNER JOIN iqcare.patienticf d ON c.id=d.patientmastervisitid;
+	
+INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, creator,  date_created, `uuid`)
+	SELECT patient_id, 160108, encounter_id, encounter_datetime, location_id, 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id;
+	
+INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, obs_group_id, value_coded, creator,  date_created, `uuid`)
+	SELECT patient_id, 1729, a.encounter_id, encounter_datetime, a.location_id, obs_id,
+	IF(`Cough`=0, 1066,
+	IF(`Cough`=1, 159799, NULL)), 1, a.date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	INNER JOIN openmrs.obs d ON a.encounter_id=d.encounter_id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id
+
+	UNION SELECT patient_id, 1729, a.encounter_id, encounter_datetime, a.location_id, obs_id,
+	IF(`Fever`=0, 1066,
+	IF(`Fever`=1, 1494, NULL)), 1, a.date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	INNER JOIN openmrs.obs d ON a.encounter_id=d.encounter_id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id
+
+	UNION SELECT patient_id, 1729, a.encounter_id, encounter_datetime, a.location_id, obs_id,
+	IF(`WeightLoss`=0, 1066,
+	IF(`WeightLoss`=1, 832, NULL)), 1, a.date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	INNER JOIN openmrs.obs d ON a.encounter_id=d.encounter_id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id
+
+	UNION SELECT patient_id, 1729, a.encounter_id, encounter_datetime, a.location_id, obs_id,
+	IF(`NightSweats`=0, 1066,
+	IF(`NightSweats`=1, 133027, NULL)), 1, a.date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	INNER JOIN openmrs.obs d ON a.encounter_id=d.encounter_id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id;
+	
+INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator,  date_created, `uuid`)
+	SELECT patient_id, 164948, encounter_id, encounter_datetime, location_id, 
+    IF(`OnAntiTbDrugs`=0, 1066,
+    IF(`OnAntiTbDrugs`=1, 1065, NULL)), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id;
+	
+INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator,  date_created, `uuid`)
+	SELECT patient_id, 164950, encounter_id, encounter_datetime, location_id, 
+    IF(`EverBeenOnIpt`=0, 1066,
+    IF(`EverBeenOnIpt`=1, 1065, NULL)), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+    AND !ISNULL(EverBeenOnIpt)
+	GROUP BY b.id;
+	
+	
 -- End of Obs
 
 ALTER TABLE openmrs.person DROP COLUMN ptn_pk;

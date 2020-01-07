@@ -1,4 +1,4 @@
-## How to Sync Microsoft OneDrive with Linux
+## How to Sync Microsoft OneDrive with Linux (alternatively you can use filezilla or some other client to transfer files) :)
 https://www.maketecheasier.com/sync-onedrive-linux/
 
 ## How to make a service that starts on boot in CentOS?
@@ -31,3 +31,5 @@ Restart=always
 
 [Install]
 WantedBy=multi-user.target
+
+
