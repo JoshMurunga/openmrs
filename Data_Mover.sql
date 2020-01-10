@@ -1329,10 +1329,9 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, loca
 	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
 	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
 	WHERE visitdate=encounter_datetime
-	GROUP BY b.id;
+	GROUP BY b.id
 	
-INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator,  date_created, `uuid`)
-	SELECT patient_id, 164950, encounter_id, encounter_datetime, location_id, 
+	UNION SELECT patient_id, 164950, encounter_id, encounter_datetime, location_id, 
     IF(`EverBeenOnIpt`=0, 1066,
     IF(`EverBeenOnIpt`=1, 1065, NULL)), 1, date_created, UUID()
 	FROM openmrs.encounter a
@@ -1340,8 +1339,70 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, loca
 	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
 	WHERE visitdate=encounter_datetime
     AND !ISNULL(EverBeenOnIpt)
-	GROUP BY b.id;
+	GROUP BY b.id
 	
+	UNION SELECT patient_id, 164949, encounter_id, encounter_datetime, location_id, 
+    IF(`OnIpt`=0, 1066,
+    IF(`OnIpt`=1, 1065, NULL)), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticf b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id
+	
+	UNION SELECT patient_id, 162309, encounter_id, encounter_datetime, location_id,
+	IF(`StartAntiTb`=0, 1066,
+	IF(`StartAntiTb`=1, 1065, NULL)), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticfaction b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id
+    
+    UNION SELECT patient_id, 162275, encounter_id, encounter_datetime, location_id,
+	IF(`EvaluatedForIpt`=0, 1066,
+	IF(`EvaluatedForIpt`=1, 1065, NULL)), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticfaction b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id
+    
+    UNION SELECT patient_id, 163414, encounter_id, encounter_datetime, location_id,
+	IF(`InvitationOfContacts`=0, 1066,
+	IF(`InvitationOfContacts`=1, 1065, NULL)), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticfaction b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	GROUP BY b.id
+    
+    UNION SELECT patient_id, 1271, encounter_id, encounter_datetime, location_id,
+	IF(`SputumSmear`=1797, 307, NULL), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticfaction b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	AND `SputumSmear` NOT IN (0,1,2,3,2264,1570)
+	GROUP BY b.id
+
+	UNION SELECT patient_id, 1271, encounter_id, encounter_datetime, location_id,
+	IF(`ChestXray`=1797, 12, NULL), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticfaction b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	AND `ChestXray` NOT IN (0,1,2,3,2264,1570)
+	GROUP BY b.id
+
+	UNION SELECT patient_id, 1271, encounter_id, encounter_datetime, location_id,
+	IF(`GeneXpert`=1797, 162202, NULL), 1, date_created, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.patienticfaction b ON a.visit_pk=b.patientmastervisitid + 13000000
+	INNER JOIN iqcare.patientmastervisit c ON b.patientmastervisitid=c.id
+	WHERE visitdate=encounter_datetime
+	AND `GeneXpert` NOT IN (0,1,2,3,2264,1570)
+	GROUP BY b.id;
 	
 -- End of Obs
 
