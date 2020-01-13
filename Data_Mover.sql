@@ -1147,7 +1147,16 @@ INSERT INTO openmrs.encounter (encounter_type, patient_id, location_id, form_id,
 	SELECT 2, person_id, 2631, 26, exitdate, 1, c.createdate, UUID(), patientmastervisitid + 10000000
 	FROM openmrs.person a
 	INNER JOIN iqcare.patient b ON a.ptn_pk=b.ptn_pk
-	INNER JOIN iqcare.patientcareending c ON b.id=c.patientid;
+	INNER JOIN iqcare.patientcareending c ON b.id=c.patientid
+	
+	UNION SELECT 2, person_id, 2631, 26, careendeddate, 1, b.createdate, UUID(), visit_id + 14000000
+	FROM openmrs.person a
+	INNER JOIN iqcare.dtl_patientcareended b ON a.ptn_pk=b.ptn_pk
+	INNER JOIN iqcare.ord_visit c ON b.ptn_pk=c.ptn_pk
+	WHERE !ISNULL(patientexittext)
+	AND b.ptn_pk NOT IN
+	(SELECT ptn_pk FROM patient a INNER JOIN `patientcareending` b ON a.id=b.patientid)
+	GROUP BY person_id;
 	
 INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, value_coded, creator,  date_created, `uuid`)
 	SELECT patient_id, 161555, encounter_id, encounter_datetime, location_id,
@@ -1157,7 +1166,20 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, loca
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.patientcareending b ON a.visit_pk=b.patientmastervisitid + 10000000
 	WHERE exitdate=encounter_datetime
-	GROUP BY b.id;
+	GROUP BY b.id
+	
+	UNION SELECT patient_id, 161555, encounter_id, encounter_datetime, location_id,
+	IF(`PatientExitText`='Lost to follow-up', 5240,
+	IF(`PatientExitText`='SELF TRANSFER OUT', 165370,
+	IF(`PatientExitText`='Transfer out', 159492,
+	IF(`PatientExitText`='Deceased', 160034,
+	IF(`PatientExitText`='Discharged', 1692,
+	IF(`PatientExitText`='PMTCT end', 1253, NULL)))))), 1, c.createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.ord_visit b ON a.visit_pk=b.visit_id + 14000000
+	INNER JOIN iqcare.dtl_patientcareended c ON b.ptn_pk=c.ptn_pk
+	WHERE careendeddate=encounter_datetime
+	GROUP BY b.visit_id;
 	
 INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, value_datetime, creator,  date_created, `uuid`)
 	SELECT patient_id, 160649, encounter_id, encounter_datetime, location_id, exitdate, 1, createdate, UUID()
@@ -1165,15 +1187,30 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, loca
 	INNER JOIN iqcare.patientcareending b ON a.visit_pk=b.patientmastervisitid + 10000000
 	WHERE exitdate=encounter_datetime
 	AND exitreason=263
-	GROUP BY b.id;
+	GROUP BY b.id
 	
-INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, value_datetime, creator,  date_created, `uuid`)
-	SELECT patient_id, 1543, encounter_id, encounter_datetime, location_id, IF(!ISNULL(dateofdeath), dateofdeath, exitdate), 1, createdate, UUID()
+	UNION SELECT patient_id, 160649, encounter_id, encounter_datetime, location_id, careendeddate, 1, c.createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.ord_visit b ON a.visit_pk=b.visit_id + 14000000
+	INNER JOIN iqcare.dtl_patientcareended c ON b.ptn_pk=c.ptn_pk
+	WHERE careendeddate=encounter_datetime
+	AND PatientExitText='Transfer out'
+	GROUP BY b.visit_id
+	
+	UNION SELECT patient_id, 1543, encounter_id, encounter_datetime, location_id, IF(!ISNULL(dateofdeath), dateofdeath, exitdate), 1, createdate, UUID()
 	FROM openmrs.encounter a
 	INNER JOIN iqcare.patientcareending b ON a.visit_pk=b.patientmastervisitid + 10000000
 	WHERE exitdate=encounter_datetime
 	AND exitreason=262
-	GROUP BY b.id;
+	GROUP BY b.id
+	
+	UNION SELECT patient_id, 1543, encounter_id, encounter_datetime, location_id, careendeddate, 1, c.createdate, UUID()
+	FROM openmrs.encounter a
+	INNER JOIN iqcare.ord_visit b ON a.visit_pk=b.visit_id + 14000000
+	INNER JOIN iqcare.dtl_patientcareended c ON b.ptn_pk=c.ptn_pk
+	WHERE careendeddate=encounter_datetime
+	AND PatientExitText='Deceased'
+	GROUP BY b.visit_id;
 	
 INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, location_id, value_text, creator,  date_created, `uuid`)
 	SELECT patient_id, 159495, encounter_id, encounter_datetime, location_id, transferoutfacility, 1, createdate, UUID()
