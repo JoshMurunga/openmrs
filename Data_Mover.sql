@@ -2074,7 +2074,7 @@ INSERT INTO openmrs.obs (person_id, concept_id, encounter_id, obs_datetime, loca
 	AND `EnrollmentWHOStage`<>518
 	GROUP BY b.id;
 	
-
+-- #35 Patient Screening
 
 
 	
